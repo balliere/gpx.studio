@@ -85,7 +85,7 @@ export class RoutingControls {
         this.file = file;
         for (let zoom = MIN_ANCHOR_ZOOM; zoom <= MAX_ANCHOR_ZOOM; zoom++) {
             this.layers.set(zoom, {
-                id: `routing-controls-${zoom}`,
+                id: `routing-controls-${this.fileId}-${zoom}`,
                 anchors: [],
             });
         }
