@@ -44,7 +44,7 @@ export const basemaps: { [key: string]: string | StyleSpecification } = {
                     'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/WMTS/tile/1.0.0/World_Imagery/default/default028mm/{z}/{y}/{x}.jpg',
                 ],
                 tileSize: 256,
-                maxzoom: 23,
+                maxzoom: 19,
                 attribution:
                     '© <a href="https://www.esri.com/" target="_blank">Esri</a>, Vantor, Earthstar Geographics, and the GIS User Community',
             },
