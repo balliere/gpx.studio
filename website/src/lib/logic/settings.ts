@@ -162,24 +162,31 @@ function getLayerValidator(allowed: Record<string, any>, fallback: string) {
 
 function filterLayerTree(t: LayerTreeType, allowed: LayerTreeType | undefined): LayerTreeType {
     const filtered: LayerTreeType = {};
-    if (!allowed) return filtered;
-    Object.keys(allowed).forEach((key) => {
-        const allowedVal = allowed[key];
-        if (typeof allowedVal === 'boolean') {
-            filtered[key] = typeof t?.[key] === 'boolean' ? t[key] : allowedVal;
-        } else {
-            filtered[key] = filterLayerTree(
-                typeof t?.[key] === 'object' ? (t[key] as LayerTreeType) : {},
-                allowedVal
-            );
-        }
-    });
-    Object.entries(t ?? {}).forEach(([key, value]) => {
-        if (
-            !Object.hasOwn(filtered, key) &&
-            (key.startsWith('custom-') || key.startsWith('extension-'))
-        ) {
-            filtered[key] = value;
+    if (allowed) {
+        Object.entries(allowed).forEach(([key, value]) => {
+            if (Object.hasOwn(t, key)) {
+                if (typeof value === 'boolean') {
+                    filtered[key] = t[key];
+                } else if (typeof value === 'object') {
+                    filtered[key] = filterLayerTree(
+                        typeof t[key] === 'object' ? t[key] : {},
+                        value
+                    );
+                }
+            } else {
+                filtered[key] = value;
+            }
+        });
+    }
+    Object.entries(t).forEach(([key, value]) => {
+        if (!Object.hasOwn(filtered, key)) {
+            if (typeof value === 'boolean') {
+                if (key.startsWith('custom-') || key.startsWith('extension-')) {
+                    filtered[key] = value;
+                }
+            } else if (typeof value === 'object') {
+                filtered[key] = filterLayerTree(value, undefined);
+            }
         }
     });
     return filtered;
