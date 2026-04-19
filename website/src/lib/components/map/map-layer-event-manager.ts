@@ -142,6 +142,7 @@ export class MapLayerEventManager {
     }
 
     private _handleMouseMove(e: maplibregl.MapMouseEvent) {
+        if (e.originalEvent.buttons > 0) return;
         const featuresByLayer = this._getRenderedFeaturesByLayer(e);
         Object.keys(this._listeners).forEach((layerId) => {
             const features = featuresByLayer[layerId] || [];
