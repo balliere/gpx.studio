@@ -57,8 +57,10 @@ export class RoutingControls {
 
     updateControlsBinded: () => void = this.updateControls.bind(this);
     appendAnchorBinded: (e: MapMouseEvent) => void = this.appendAnchor.bind(this);
+    addIntermediateAnchorBinded: (e: MapMouseEvent) => void = this.addIntermediateAnchor.bind(this);
 
     draggedAnchorIndex: number | null = null;
+    lastDraggedAnchorEventTime: number = 0;
     draggingStartingPosition: maplibregl.Point = new maplibregl.Point(0, 0);
     onMouseEnterBinded: () => void = this.onMouseEnter.bind(this);
     onMouseLeaveBinded: () => void = this.onMouseLeave.bind(this);
@@ -133,6 +135,7 @@ export class RoutingControls {
         map_.on('style.load', this.updateControlsBinded);
         map_.on('click', this.appendAnchorBinded);
         layerEventManager.on('mousemove', this.fileId, this.showTemporaryAnchorBinded);
+        layerEventManager.on('click', this.fileId, this.addIntermediateAnchorBinded);
 
         this.fileUnsubscribe = this.file.subscribe(this.updateControlsBinded);
     }
@@ -237,6 +240,7 @@ export class RoutingControls {
         map_?.off('style.load', this.updateControlsBinded);
         map_?.off('click', this.appendAnchorBinded);
         layerEventManager?.off('mousemove', this.fileId, this.showTemporaryAnchorBinded);
+        layerEventManager?.off('click', this.fileId, this.addIntermediateAnchorBinded);
         map_?.off('mousemove', this.updateTemporaryAnchorBinded);
 
         this.layers.forEach((layer) => {
@@ -522,11 +526,18 @@ export class RoutingControls {
             return;
         }
         if (
+            this.draggedAnchorIndex !== null ||
+            Date.now() - this.lastDraggedAnchorEventTime < 100
+        ) {
+            // Exit if anchor is being dragged
+            return;
+        }
+        if (
             e.target.queryRenderedFeatures(e.point, {
-                layers: [...this.layers.values()].map((layer) => layer.id),
+                layers: [this.fileId, ...[...this.layers.values()].map((layer) => layer.id)],
             }).length
         ) {
-            // Clicked on routing control, ignoring
+            // Clicked on routing control or layer, ignoring
             return;
         }
         this.appendAnchorWithCoordinates({
@@ -596,6 +607,17 @@ export class RoutingControls {
         };
 
         await this.routeBetweenAnchors([lastAnchor, newAnchor], [lastAnchorPoint, newAnchorPoint]);
+    }
+
+    addIntermediateAnchor(e: maplibregl.MapMouseEvent) {
+        e.preventDefault();
+
+        console.log('add intermediate anchor');
+
+        if (this.temporaryAnchor !== null) {
+            // this.turnIntoPermanentAnchor();
+            return;
+        }
     }
 
     getNeighbouringAnchors(anchor: Anchor): [Anchor | null, Anchor | null] {
@@ -818,8 +840,11 @@ export class RoutingControls {
     onClick(e: MapLayerMouseEvent) {
         e.preventDefault();
 
-        if (this.temporaryAnchor !== null) {
-            this.turnIntoPermanentAnchor();
+        if (
+            this.draggedAnchorIndex !== null ||
+            Date.now() - this.lastDraggedAnchorEventTime < 100
+        ) {
+            // Exit if anchor is being dragged
             return;
         }
 
@@ -873,6 +898,7 @@ export class RoutingControls {
 
         this.draggedAnchorIndex = e.features![0].properties.anchorIndex;
         this.draggingStartingPosition = e.point;
+        this.lastDraggedAnchorEventTime = Date.now();
 
         _map.on('mousemove', this.onMouseMoveBinded);
         _map.once('mouseup', this.onMouseUpBinded);
@@ -889,6 +915,7 @@ export class RoutingControls {
 
         this.draggedAnchorIndex = e.features![0].properties.anchorIndex;
         this.draggingStartingPosition = e.point;
+        this.lastDraggedAnchorEventTime = Date.now();
 
         e.preventDefault();
         _map.dragPan.disable();
@@ -908,6 +935,8 @@ export class RoutingControls {
             lat: e.lngLat.lat,
             lon: e.lngLat.lng,
         });
+
+        this.lastDraggedAnchorEventTime = Date.now();
     }
 
     onMouseUp(e: MapLayerMouseEvent | MapLayerTouchEvent) {
@@ -946,6 +975,7 @@ export class RoutingControls {
         }
 
         this.draggedAnchorIndex = null;
+        this.lastDraggedAnchorEventTime = Date.now();
     }
 
     showTemporaryAnchor(e: MapLayerMouseEvent) {
